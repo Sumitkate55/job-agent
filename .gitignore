@@ -1,5 +1,4 @@
 config.py
-*.pdf
 job_matches.html
 __pycache__/
 *.pyc
