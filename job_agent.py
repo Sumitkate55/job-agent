@@ -581,14 +581,19 @@ def main():
     print("              ANTIGRAVITY JOB AGENT ACTIVE              ")
     print("=" * 60)
     
-    # 1. Resolve resume path and parse text
-    try:
-        resume_path = find_resume_file(args.resume)
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
-        
-    text = extract_text_from_pdf(resume_path)
+    # 1. Resolve resume text
+    resume_env_text = os.environ.get("RESUME_TEXT")
+    if resume_env_text and resume_env_text.strip():
+        print("Using resume text from environment variable (RESUME_TEXT)...")
+        text = resume_env_text
+    else:
+        try:
+            resume_path = find_resume_file(args.resume)
+            text = extract_text_from_pdf(resume_path)
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            print("To resolve, either place a resume PDF in the project directory, or set the 'RESUME_TEXT' environment variable/secret.")
+            sys.exit(1)
     
     # 2. Extract profile details
     candidate_name = extract_candidate_name(text)

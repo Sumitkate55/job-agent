@@ -1,0 +1,65 @@
+name: Antigravity Job Agent Cron
+
+on:
+  schedule:
+    # Run daily at 03:30 UTC (which is 9:00 AM Indian Standard Time)
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    # Enables manual execution via the GitHub Repository Actions tab
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate config.py from Secrets
+        env:
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          INDEED_API_KEY: ${{ secrets.INDEED_API_KEY }}
+          RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
+          RAPIDAPI_URL: ${{ secrets.RAPIDAPI_URL }}
+        run: |
+          python3 -c "
+          import os, ast
+          emails = os.environ.get('RECIPIENT_EMAILS', '[]').strip()
+          parsed_emails = []
+          if emails:
+              try:
+                  parsed_emails = ast.literal_eval(emails)
+                  if isinstance(parsed_emails, str):
+                      parsed_emails = [parsed_emails]
+                  elif not isinstance(parsed_emails, list):
+                      parsed_emails = [str(parsed_emails)]
+              except Exception:
+                  parsed_emails = [e.strip() for e in emails.split(',') if e.strip()]
+          else:
+              parsed_emails = ['katesumit55@gmail.com']
+          
+          with open('config.py', 'w') as f:
+              f.write(f'RECIPIENT_EMAILS = {repr(parsed_emails)}\n')
+              f.write(f'GMAIL_APP_PASSWORD = {repr(os.environ.get(\"GMAIL_APP_PASSWORD\"))}\n')
+              f.write(f'INDEED_API_KEY = {repr(os.environ.get(\"INDEED_API_KEY\"))}\n')
+              f.write(f'RAPIDAPI_HOST = {repr(os.environ.get(\"RAPIDAPI_HOST\", \"jsearch.p.rapidapi.com\"))}\n')
+              f.write(f'RAPIDAPI_URL = {repr(os.environ.get(\"RAPIDAPI_URL\", \"https://jsearch.p.rapidapi.com/search\"))}\n')
+          "
+
+      - name: Run Job Agent
+        env:
+          RESUME_TEXT: ${{ secrets.RESUME_TEXT }}
+        run: |
+          python job_agent.py
